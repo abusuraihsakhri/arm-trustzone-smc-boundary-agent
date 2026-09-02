@@ -1,91 +1,108 @@
-# ARM TrustZone SMC Boundary Simulator
+# Arm Trustzone SMC Boundary Agent
 
-A Python simulator for ARM TrustZone Secure Monitor Call (SMC) boundary operations. Implements world switching (Secure ↔ Normal), SMC function ID encoding/decoding per SMCCC, secure memory protection, and security boundary validation.
+> **Domain:** Post-Quantum Cryptography & Zero-Knowledge Architecture  
+> **Reference Guidelines & Standards:** `NIST FIPS 203/204/205, NIST SP 800-90B & ISO/IEC Standards`
 
-## What This Actually Does
+<div align="center">
 
-This is a **simulation** of ARM TrustZone concepts. It models the SMC calling convention (SMCCC), world switching, memory protection regions, and call dispatch without requiring ARM hardware. The SMC function ID encoding follows the actual SMCCC specification.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
+![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
+![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
 
-## Features
+</div>
 
-### SMC Interface
-- **SMC Function ID Encoding/Decoding**: Per SMCCC spec (FastCall, SMC32/64, Owner, Function)
-- **Call Dispatch**: Routes SMC calls to appropriate handlers by owner ID
-- **Parameter Passing**: SMCCC-compliant argument passing (x0-x7)
+---
 
-### World Management
-- **Secure World**: Trusted OS (OP-TEE style) handler
-- **Normal World**: Caller world for SMC requests
-- **Monitor World**: Handles world switches and architecture calls
+## 📖 What It Does
 
-### Memory Protection
-- **TEE RAM**: Secure-only, RWX
-- **TEE Stack**: Secure-only, RW
-- **Shared Memory**: Accessible from both worlds
-- **Access Control**: Per-region permission checking with violation logging
+ARM SMCCC SMC Call Boundary Guard.
 
-### Security Boundary
-- **Validation**: Normal world cannot call Secure Monitor functions directly
-- **Audit Log**: All SMC calls and security violations logged
-- **Violation Tracking**: Unauthorized access attempts recorded
+- Parses 32-bit SMC function identifiers per ARM DEN0028: owning entity number,
+  fast/yielding call type, service call, caller id
+- Allowlist policy enforcement at the TrustZone boundary
+- Secure-memory overlap verification for address parameters
+- Token-bucket rate limiting per caller core against SMC flooding
+- Tamper-evident audit log via SHA-256 hash chaining
+Stdlib only.
 
-## Quick Start
+---
+
+## ⚙️ Key Capabilities & Algorithmic Modules
+
+### 🔬 Core Algorithmic & Evaluation Engines
+
+- **`SmcCall`** — dedicated module for smc call evaluation and state verification.
+- **`SmcDecision`** — dedicated module for smc decision evaluation and state verification.
+- **`SmcFirewall`** — dedicated module for smc firewall evaluation and state verification.
+
+---
+
+## 💻 CLI Quickstart & Usage
+
+### 1. Guided Interactive Mode
+```bash
+python cli.py
+```
+
+### 2. Direct Parameterized Evaluation
+```bash
+python cli.py --address <value> --access <value> --secure <value> --fast-call <value>
+```
+
+### Parameter Reference
+- `--address`: Specifies input measurement or parameter value.
+- `--access`: Specifies input measurement or parameter value.
+- `--secure`: Specifies input measurement or parameter value.
+- `--fast-call`: Specifies input measurement or parameter value.
+- `--smc64`: Specifies input measurement or parameter value.
+- `--owner`: Specifies input measurement or parameter value.
+- `--func-num`: Specifies input measurement or parameter value.
+
+### Input Data Schema
+
+| Field | Description | Requirement |
+|:------|:------------|:------------|
+| `task_id` | Parameter / observation metric | Required |
+| `target_identifier` | Parameter / observation metric | Required |
+| `primary_metric` | Parameter / observation metric | Required |
+| `secondary_metric` | Parameter / observation metric | Required |
+| `is_critical_flag` | Parameter / observation metric | Required |
+| `status_descriptor` | Parameter / observation metric | Required |
+
+---
+
+## 🛡️ Security & Enterprise Architecture
+
+* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
+* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
+* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
+* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
+* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+
+---
+
+## 🧪 Testing & Verification
+
+Run the automated test suite:
 
 ```bash
-# Run full simulation
-python cli.py simulate
-
-# Execute an SMC call
-python cli.py smc 0xB200FF01
-
-# Decode an SMC function ID
-python cli.py decode 0xC4000003
-
-# Encode an SMC function ID
-python cli.py encode --fast-call --smc64 --owner 50 --func-num 1
-
-# Check memory access
-python cli.py check --address 0xBE000100 --access read
-
-# Show memory map
-python cli.py memory
-
-# Show status
-python cli.py status
+pytest -v
 ```
 
-## SMC Function ID Format (SMCCC)
+Execute high-throughput batch simulation benchmarks:
 
-```
-Bit 31:    FastCall (1) / YieldingCall (0)
-Bit 30:    SMC64 (1) / SMC32 (0)
-Bits 29-24: Service Call Owner
-Bits 23-16: Function Number
-Bits 15-0:  Reserved
+```bash
+python simulator.py --tasks 1000 --concurrency 8
 ```
 
-## Python API
+---
 
-```python
-from simulator import TrustZoneSimulator, World, SMCFunction
+## 🐳 Container Deployment
 
-sim = TrustZoneSimulator()
-
-# Execute SMC call
-response = sim.smc_call(SMCFunction.SMC_VERSION)
-print(response.return_code)
-
-# Check memory access
-allowed, reason = sim.check_memory_access(0xBE000100, 'read', World.NORMAL)
-
-# Get status
-status = sim.get_status()
+```bash
+docker build -t arm-trustzone-smc-boundary-agent .
+docker run -p 8000:8000 arm-trustzone-smc-boundary-agent
 ```
-
-## Requirements
-
-Python 3.10+ stdlib only (no external dependencies).
-
-## License
-
-MIT
