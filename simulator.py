@@ -53,7 +53,8 @@ class SMCOwner(IntEnum):
     TRUSTED_OS = 0x32       # OP-TEE, Trusty, etc.
     TRUSTED_OS_END = 0x3F
     HYPERVISOR = 0x5A
-    SECURE_MONITOR = 0x7E
+    SECURE_MONITOR = 0x3E   # Standard SMCCC owner 62 (bits 29:24 of 0xFE / 0x3E)
+
 
 
 # Common SMC function IDs
@@ -252,27 +253,31 @@ class TrustedOSHandler(SMCHandler):
         self._open_sessions: Dict[int, Dict] = {}
 
     def handle(self, request: SMCRequest) -> SMCResponse:
-        func_num = decode_smc_function_id(request.function_id)['func_num']
+        fid = request.function_id
+        func_num = decode_smc_function_id(fid)['func_num']
+        low16 = fid & 0xFFFF
 
-        if func_num == 0x00:  # SMC_STD_CALL_COUNT
-            return SMCResponse(
-                return_code=SMCReturnCode.SUCCESS,
-                return_values=[10],  # Number of supported calls
-                handler_world=World.SECURE,
-                handled=True,
-            )
-        elif func_num == 0x01:  # SMC_STD_UID
+        if low16 == 0xFF01 or func_num == 0x01:  # SMC_STD_UID
             return SMCResponse(
                 return_code=SMCReturnCode.SUCCESS,
                 return_values=[0x486178e0, 0x4de6b823, 0x80000000, 0x00000000],
                 handler_world=World.SECURE,
                 handled=True,
             )
+        elif low16 == 0xFF00 or func_num == 0x00:  # SMC_STD_CALL_COUNT
+            return SMCResponse(
+                return_code=SMCReturnCode.SUCCESS,
+                return_values=[10],  # Number of supported calls
+                handler_world=World.SECURE,
+                handled=True,
+            )
         return SMCResponse(
             return_code=SMCReturnCode.NOT_SUPPORTED,
+
             handler_world=World.SECURE,
             handled=True,
         )
+
 
 
 # ---------------------------------------------------------------------------

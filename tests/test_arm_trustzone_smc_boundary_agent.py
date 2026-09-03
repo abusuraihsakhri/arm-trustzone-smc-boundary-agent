@@ -285,3 +285,15 @@ class TestCLI:
         from cli import main
         ret = main(['encode', '--fast-call', '--owner', '50', '--func-num', '1'])
         assert ret == 0
+
+    def test_batch_command(self):
+        from cli import main
+        import os
+        import tempfile
+        sample_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sample.csv")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out_file = os.path.join(tmpdir, "out_batch.csv")
+            ret = main(['batch', '-i', sample_path, '-o', out_file])
+            assert ret == 0
+            assert os.path.exists(out_file)
+

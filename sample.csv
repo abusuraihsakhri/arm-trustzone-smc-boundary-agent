@@ -1,4 +1,6 @@
-task_id,target_identifier,primary_metric,secondary_metric,is_critical_flag,status_descriptor
-TASK-001,TARGET-01,28.4,14.2,True,DISCORDANT
-TASK-002,TARGET-02,12.0,4.1,False,NOMINAL
-TASK-003,TARGET-03,35.0,19.5,True,ANOMALY
+call_id,function_id,caller_world,arg0,description
+CALL-01,0x80000000,normal,,Query SMCCC Version
+CALL-02,0xB200FF00,normal,,Trusted OS Call Count
+CALL-03,0xB200FF01,normal,,Trusted OS UID
+CALL-04,0xFE000000,normal,,Secure Monitor Direct Call (Expected Denied)
+CALL-05,0xC4000003,normal,0x01,CPU ON Service

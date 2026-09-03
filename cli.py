@@ -135,6 +135,48 @@ def cmd_encode(args):
     return 0
 
 
+def cmd_batch(args):
+    """Batch process SMC calls from CSV."""
+    import csv
+    sim = TrustZoneSimulator()
+    with open(args.input, mode="r", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+
+    out_fields = fieldnames + ["return_code", "return_code_name", "handled", "handler_world"]
+    out_rows = []
+    for r in rows:
+        row_dict = dict(r)
+        fid_raw = r.get("function_id") or "0x80000000"
+        try:
+            func_id = int(fid_raw, 0) if isinstance(fid_raw, str) else int(fid_raw)
+            w_str = str(r.get("caller_world", "normal")).lower()
+            world = World.SECURE if w_str in ("secure", "sec") else World.NORMAL
+            smc_args = []
+            if r.get("arg0"):
+                smc_args.append(int(r["arg0"], 0))
+            resp = sim.smc_call(func_id, smc_args, caller_world=world)
+            row_dict["return_code"] = resp.return_code
+            row_dict["return_code_name"] = SMCReturnCode(resp.return_code).name if resp.return_code in SMCReturnCode.__members__.values() else str(resp.return_code)
+            row_dict["handled"] = resp.handled
+            row_dict["handler_world"] = resp.handler_world.value
+        except Exception as ex:
+            row_dict["return_code"] = -1
+            row_dict["return_code_name"] = f"ERROR: {ex}"
+            row_dict["handled"] = False
+            row_dict["handler_world"] = "error"
+        out_rows.append(row_dict)
+
+    with open(args.output, mode="w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=out_fields)
+        writer.writeheader()
+        writer.writerows(out_rows)
+
+    print(f"Processed {len(out_rows)} SMC records -> {args.output}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='arm-trustzone-smc',
@@ -180,9 +222,16 @@ def main(argv=None):
     p.add_argument('--func-num', type=int, required=True, help='Function number')
     p.set_defaults(func=cmd_encode)
 
+    # batch
+    p = sub.add_parser('batch', help='Batch process SMC calls from CSV')
+    p.add_argument('--input', '-i', required=True, help='Input CSV path')
+    p.add_argument('--output', '-o', default='results.csv', help='Output CSV path')
+    p.set_defaults(func=cmd_batch)
+
     args = parser.parse_args(argv)
     return args.func(args)
 
 
 if __name__ == '__main__':
     sys.exit(main())
+
